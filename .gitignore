@@ -1,0 +1,19 @@
+# Ignore zip files
+*.zip
+
+# Ignore system files
+.DS_Store
+
+# Ignore node modules
+node_modules/
+
+# Ignore build output
+dist/
+build/
+
+# Ignore IDE files
+.idea/
+.vscode/
+
+# Ignore logs
+*.log
