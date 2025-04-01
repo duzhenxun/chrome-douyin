@@ -2,23 +2,136 @@
 const GITHUB_OWNER = 'duzhenxun';
 const GITHUB_REPO = 'chrome-douyin';
 const VERSION_CHECK_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
-const CURRENT_VERSION = '1.0';
+const CURRENT_VERSION = chrome.runtime.getManifest().version;
+console.log(CURRENT_VERSION);
 const UPDATE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
+
+// 下载队列管理器
+class DownloadManager {
+  constructor() {
+    this.downloadQueue = new Map();
+    this.maxConcurrent = 3; // 最大同时下载数
+    this.currentDownloads = 0;
+  }
+
+  formatSize(bytes) {
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)}KB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  }
+
+  async addToQueue(videoUrl, fileName, onProgress, onComplete, onError) {
+    const downloadId = Math.random().toString(36).substr(2, 9);
+    const downloadTask = {
+      videoUrl,
+      fileName,
+      onProgress,
+      onComplete,
+      onError,
+      status: 'pending'
+    };
+
+    this.downloadQueue.set(downloadId, downloadTask);
+    this.processQueue();
+    return downloadId;
+  }
+
+  async processQueue() {
+    if (this.currentDownloads >= this.maxConcurrent) return;
+
+    for (const [downloadId, task] of this.downloadQueue) {
+      if (task.status === 'pending' && this.currentDownloads < this.maxConcurrent) {
+        this.currentDownloads++;
+        task.status = 'downloading';
+        this.startDownload(downloadId, task);
+      }
+    }
+  }
+
+  async getFileSize(url) {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return parseInt(response.headers.get('content-length') || '0');
+    } catch (error) {
+      console.error('获取文件大小失败:', error);
+      return 0;
+    }
+  }
+
+  async startDownload(downloadId, task) {
+    try {
+      const totalSize = await this.getFileSize(task.videoUrl);
+      const response = await fetch(task.videoUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const reader = response.body.getReader();
+      const chunks = [];
+      let receivedSize = 0;
+
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+
+        chunks.push(value);
+        receivedSize += value.length;
+
+        // 计算下载进度
+        const progress = {
+          size: receivedSize,
+          totalSize: totalSize,
+          percent: totalSize ? Math.round((receivedSize / totalSize) * 100) : 0,
+          sizeText: receivedSize < 1024 * 1024 
+            ? `${(receivedSize / 1024).toFixed(1)}KB`
+            : `${(receivedSize / (1024 * 1024)).toFixed(1)}MB`,
+          totalSizeText: totalSize < 1024 * 1024
+            ? `${(totalSize / 1024).toFixed(1)}KB`
+            : `${(totalSize / (1024 * 1024)).toFixed(1)}MB`
+        };
+        task.onProgress(progress);
+      }
+
+      const blob = new Blob(chunks);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${task.fileName}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      this.downloadQueue.delete(downloadId);
+      this.currentDownloads--;
+      task.onComplete();
+      this.processQueue();
+    } catch (error) {
+      console.error('下载失败:', error);
+      this.downloadQueue.delete(downloadId);
+      this.currentDownloads--;
+      task.onError(error);
+      this.processQueue();
+    }
+  }
+
+  cancelDownload(downloadId) {
+    const task = this.downloadQueue.get(downloadId);
+    if (task && task.status === 'pending') {
+      this.downloadQueue.delete(downloadId);
+    }
+  }
+}
+
+// 创建下载管理器实例
+const downloadManager = new DownloadManager();
 
 // 检查新版本
 async function checkUpdate() {
   try {
     const response = await fetch(VERSION_CHECK_URL);
     const data = await response.json();
-    
-    // GitHub Releases API返回数据结构：
-    // {
-    //   "tag_name": "v1.1",
-    //   "name": "Version 1.1",
-    //   "published_at": "2024-01-20T00:00:00Z",
-    //   "body": "更新内容：\n1. 修复视频下载问题\n2. 优化界面交互\n3. 新增批量下载功能"
-    // }
-    
+
     if (data.tag_name) {
       const latestVersion = data.tag_name.replace('v', '');
       if (latestVersion !== CURRENT_VERSION) {
@@ -31,9 +144,9 @@ async function checkUpdate() {
         // 如果版本差距过大，隐藏"稍后提醒"按钮
         const updateLater = document.getElementById('updateLater');
         const versionGap = parseFloat(latestVersion) - parseFloat(CURRENT_VERSION);
-        if (versionGap >= 1.0) {
-          updateLater.style.display = 'none';
-        }
+        // if (versionGap >= 1.0) {
+        //   updateLater.style.display = 'none';
+        // }
       }
     }
   } catch (error) {
@@ -83,39 +196,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentVideoUrl = '';
   let historyRecords = [];
-  const MAX_HISTORY = 20;
+  const MAX_HISTORY = 100;
   const historyItems = document.getElementById('historyItems');
+
+  let currentPage = 1;
+  const itemsPerPage = 10;
 
   // 渲染历史记录列表
   function renderHistory() {
     historyItems.innerHTML = '';
-    historyRecords.forEach(record => {
+    const totalRecords = historyRecords.length;
+    const totalPages = Math.ceil(totalRecords / itemsPerPage);
+    
+    // 更新历史记录标题
+    const historyTitle = document.querySelector('.history-title');
+    historyTitle.textContent = `历史记录 (共${totalRecords}条，${totalPages}页)`;
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageRecords = historyRecords.slice(startIndex, endIndex);
+
+    pageRecords.forEach((record, index) => {
       const item = document.createElement('div');
       item.className = 'history-item';
       
       const videoData = record.videoData;
       const additionalData = videoData.additional_data[0];
       
+      const infoContainer = document.createElement('div');
+      infoContainer.className = 'history-info-container';
+      infoContainer.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+      
       const title = document.createElement('div');
       title.className = 'history-item-title';
-      title.textContent = additionalData.desc || '无标题';
+      title.style.cssText = 'font-size: 14px; font-weight: 500; white-space: normal; word-break: break-word;';
+      title.textContent = `#${startIndex + index + 1} ${additionalData.desc || '无标题'}`;
       
       const meta = document.createElement('div');
       meta.className = 'history-item-meta';
+      meta.style.cssText = 'color: #666; font-size: 13px;';
       const date = new Date(record.timestamp);
       meta.textContent = `作者：${additionalData.nickname} · ${date.toLocaleString()}`;
+
+    
       
-      item.appendChild(title);
-      item.appendChild(meta);
+      infoContainer.appendChild(title);
+      infoContainer.appendChild(meta);
       
-      // 点击历史记录项重新加载视频
+      item.appendChild(infoContainer);
+
+        // 添加视频预览
+        const videoPreview = document.createElement('video');
+        videoPreview.src = videoData.video_url;
+        videoPreview.style.cssText = 'width: 100%; max-height: 200px; margin-top: 8px; border-radius: 8px;';
+        videoPreview.controls = true;
+        infoContainer.appendChild(videoPreview);
+      
+      // 点击历史记录项重新解析视频
       item.addEventListener('click', () => {
         shareTextInput.value = record.shareText;
         displayVideoInfo(record.videoData);
+        loadingEl.style.display = 'none';
+        videoInfo.style.display = 'block';
+        errorMsg.style.display = 'none';
       });
       
       historyItems.appendChild(item);
     });
+
+
+    // 更新分页按钮状态
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
   }
 
   // 修改loadHistory函数
@@ -172,6 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
     authorAvatar.src = videoData.additional_data[0].url;
     authorName.textContent = additionalData.nickname;
     authorSignature.textContent = additionalData.signature;
+    videoDesc.style.whiteSpace = 'pre-wrap';
+    videoDesc.style.wordBreak = 'break-word';
     videoDesc.textContent = additionalData.desc;
     
     currentVideoUrl = videoData.video_url;
@@ -219,8 +374,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // 输入框获得焦点时自动触发粘贴操作
-  shareTextInput.addEventListener('focus', handlePaste);
+//   // 输入框获得焦点时自动触发粘贴操作
+//   shareTextInput.addEventListener('focus', handlePaste);
 
   // 添加粘贴按钮点击事件
   if (pasteBtn) {
@@ -252,6 +407,14 @@ document.addEventListener('DOMContentLoaded', () => {
       displayVideoInfo(videoData);
       await saveHistory(shareText, videoData);
       loadingEl.style.display = 'none';
+      // 显示成功提示
+      errorMsg.style.display = 'block';
+      errorMsg.style.color = '#52c41a';
+      errorMsg.textContent = '解析成功，可以点击下载按钮下载视频';
+      setTimeout(() => {
+        errorMsg.style.display = 'none';
+        errorMsg.style.color = '#ff4d4f';
+      }, 3000);
     } catch (error) {
       loadingEl.style.display = 'none';
       errorMsg.textContent = error.message;
@@ -290,64 +453,79 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadBtn.disabled = true;
     downloadBtn.textContent = '准备下载...';
     errorMsg.style.display = 'none';
+
+    const downloadProgress = document.getElementById('downloadProgress');
+    const downloadSize = document.getElementById('downloadSize');
+    const downloadPercent = document.getElementById('downloadPercent');
+    const progressBar = document.getElementById('progressBar');
+
+    downloadProgress.style.display = 'block';
+    downloadSize.textContent = '正在去除水印...';
+    downloadPercent.textContent = '';
+    progressBar.style.width = '0';
     
-    try {
-      const response = await fetch(currentVideoUrl);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const reader = response.body.getReader();
-      const chunks = [];
-      let receivedSize = 0;
-      
-      while (true) {
-        const {done, value} = await reader.read();
-        
-        if (done) break;
-        
-        chunks.push(value);
-        receivedSize += value.length;
-        
-        if (receivedSize < 1024 * 1024) {
-          const sizeKB = (receivedSize / 1024).toFixed(1);
-          downloadBtn.textContent = `已下载 ${sizeKB}KB`;
-        } else {
-          const sizeMB = (receivedSize / (1024 * 1024)).toFixed(1);
-          downloadBtn.textContent = `已下载 ${sizeMB}MB`;
-        }
+    let fileName = '';
+    if (currentVideoData) {
+      const nickname = currentVideoData.nickname || '';
+      const desc = currentVideoData.desc || '';
+      fileName = `${nickname}-${desc}`.slice(0, 100).replace(/[/:*?"<>|]/g, '_');
+    }
+    if (!fileName) {
+      const now = new Date();
+      const timestamp = now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getDate().toString().padStart(2, '0') +
+        now.getHours().toString().padStart(2, '0') +
+        now.getMinutes().toString().padStart(2, '0') +
+        now.getSeconds().toString().padStart(2, '0');
+      fileName = `douyin_${timestamp}`;
+    }
+
+    downloadManager.addToQueue(
+      currentVideoUrl,
+      fileName,
+      (progress) => {
+        downloadBtn.textContent = '下载中...';
+        downloadSize.textContent = `${progress.sizeText} / ${progress.totalSizeText}`;
+        downloadPercent.textContent = `${progress.percent}%`;
+        progressBar.style.width = `${progress.percent}%`;
+      },
+      () => {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = '下载视频';
+        downloadProgress.style.display = 'none';
+        errorMsg.style.display = 'none';
+      },
+      (error) => {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = '下载视频';
+        downloadProgress.style.display = 'none';
+        errorMsg.textContent = '下载失败：' + (error.message || '网络错误');
+        errorMsg.style.display = 'block';
       }
-      
-      const blob = new Blob(chunks);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      let fileName = '';
-      if (currentVideoData) {
-        const nickname = currentVideoData.nickname || '';
-        const desc = currentVideoData.desc || '';
-        fileName = `${nickname}-${desc}`.slice(0, 100).replace(/[\/:*?"<>|]/g, '_');
-      }
-      if (!fileName) {
-        const now = new Date();
-        const timestamp = now.getFullYear().toString() +
-          (now.getMonth() + 1).toString().padStart(2, '0') +
-          now.getDate().toString().padStart(2, '0') +
-          now.getHours().toString().padStart(2, '0') +
-          now.getMinutes().toString().padStart(2, '0') +
-          now.getSeconds().toString().padStart(2, '0');
-        fileName = `douyin_${timestamp}`;
-      }
-      a.download = `${fileName}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('下载失败:', error);
-      errorMsg.textContent = '下载失败：' + (error.message || '网络错误');
+    );
+  });
+
+  // 复制视频地址
+  document.getElementById('copyUrlBtn').addEventListener('click', async () => {
+    if (!currentVideoUrl) {
+      errorMsg.textContent = '没有可复制的视频地址';
       errorMsg.style.display = 'block';
-    } finally {
-      downloadBtn.disabled = false;
-      downloadBtn.textContent = '下载视频';
+      return;
+    }
+
+    const copyUrlBtn = document.getElementById('copyUrlBtn');
+    const originalText = copyUrlBtn.textContent;
+
+    try {
+      await navigator.clipboard.writeText(currentVideoUrl);
+      copyUrlBtn.textContent = '已复制';
+      setTimeout(() => {
+        copyUrlBtn.textContent = originalText;
+      }, 3000);
+    } catch (error) {
+      errorMsg.textContent = '复制失败：' + (error.message || '剪贴板访问被拒绝');
+      errorMsg.style.display = 'block';
     }
   });
 
@@ -398,6 +576,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // 添加分页按钮事件监听
+  document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderHistory();
+    }
+  });
+
+  document.getElementById('nextPage').addEventListener('click', () => {
+    const totalPages = Math.ceil(historyRecords.length / itemsPerPage);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderHistory();
+    }
+  });
+
   // 页面加载时加载历史记录
   loadHistory();
+});
+
+// 打赏功能
+const donateBtn = document.getElementById('donateBtn');
+const donateModal = document.getElementById('donateModal');
+const closeDonate = document.getElementById('closeDonate');
+
+donateBtn.addEventListener('click', () => {
+  donateModal.style.display = 'block';
+});
+
+closeDonate.addEventListener('click', () => {
+  donateModal.style.display = 'none';
+});
+
+donateModal.addEventListener('click', (e) => {
+  if (e.target === donateModal) {
+    donateModal.style.display = 'none';
+  }
 });

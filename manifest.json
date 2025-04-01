@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "抖音视频下载助手",
-  "version": "1.0",
+  "version": "2025.4.0",
   "description": "一键下载抖音视频，支持在线预览和视频信息展示",
   "permissions": [
     "activeTab",
