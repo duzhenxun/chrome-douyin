@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖音视频下载助手 - Chrome扩展</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            color: #ff4d4f;
+            margin-bottom: 20px;
+        }
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card h3 {
+            color: #ff4d4f;
+            margin-bottom: 15px;
+        }
+        .preview {
+            margin-bottom: 60px;
+        }
+        .preview h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .preview-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .preview-images img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .install {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .install h2 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .github-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #24292e;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .github-link:hover {
+            background: #2f363d;
+        }
+        .support {
+            text-align: center;
+        }
+        .support h2 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .support img {
+            max-width: 200px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>抖音视频下载助手</h1>
+            <p>一键下载抖音视频，去水印、支持预览、完全免费</p>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>视频去水印下载</h3>
+                <p>一键下载抖音视频，自动去除水印，保存原始高清视频。</p>
+            </div>
+            <div class="feature-card">
+                <h3>在线视频预览</h3>
+                <p>下载前可在线预览视频内容，确保下载的是您需要的视频。</p>
+            </div>
+            <div class="feature-card">
+                <h3>视频信息展示</h3>
+                <p>显示视频标题、作者等详细信息，支持一键复制视频信息。</p>
+            </div>
+            <div class="feature-card">
+                <h3>历史记录支持</h3>
+                <p>保存下载历史，方便随时查看和重复下载。</p>
+            </div>
+        </div>
+
+        <div class="preview">
+            <h2>界面预览</h2>
+            <div class="preview-images">
+                <img src="1.png" alt="插件界面预览1">
+                <img src="2.png" alt="插件界面预览2">
+            </div>
+        </div>
+
+        <div class="install">
+            <h2>安装使用</h2>
+            <a href="https://github.com/duzhenxun/chrome-douyin" class="github-link" target="_blank">访问 GitHub 下载安装</a>
+            <p>下载后解压，打开Chrome扩展程序页面，开启开发者模式，点击"加载已解压的扩展程序"即可使用。</p>
+        </div>
+
+        <div class="support">
+            <h2>支持作者</h2>
+            <p>如果您觉得这个工具对您有帮助，可以请作者喝杯咖啡 ☕</p>
+            <img src="images/wpay.JPG" alt="微信打赏">
+        </div>
+    </div>
+</body>
+</html>
