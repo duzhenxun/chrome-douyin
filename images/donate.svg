@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="200" height="200" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" fill="#ffffff"/>
-  <text x="100" y="100" font-family="Arial" font-size="14" text-anchor="middle" fill="#333333">微信收款码示例</text>
-  <text x="100" y="120" font-family="Arial" font-size="12" text-anchor="middle" fill="#666666">(请替换为实际的收款码)</text>
-</svg>
