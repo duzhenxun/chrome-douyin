@@ -1,7 +1,9 @@
 // 版本检查配置
-const VERSION_CHECK_URL = 'https://api.example.com/version';
+const GITHUB_OWNER = 'duzhenxun';
+const GITHUB_REPO = 'chrome-douyin';
+const VERSION_CHECK_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
 const CURRENT_VERSION = '1.0';
-const UPDATE_URL = 'https://github.com/your-repo/chrome-douyin/releases';
+const UPDATE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
 // 检查新版本
 async function checkUpdate() {
@@ -9,9 +11,30 @@ async function checkUpdate() {
     const response = await fetch(VERSION_CHECK_URL);
     const data = await response.json();
     
-    if (data.version && data.version !== CURRENT_VERSION) {
-      const updateModal = document.getElementById('updateModal');
-      updateModal.style.display = 'block';
+    // GitHub Releases API返回数据结构：
+    // {
+    //   "tag_name": "v1.1",
+    //   "name": "Version 1.1",
+    //   "published_at": "2024-01-20T00:00:00Z",
+    //   "body": "更新内容：\n1. 修复视频下载问题\n2. 优化界面交互\n3. 新增批量下载功能"
+    // }
+    
+    if (data.tag_name) {
+      const latestVersion = data.tag_name.replace('v', '');
+      if (latestVersion !== CURRENT_VERSION) {
+        // 显示更新提示
+        const updateModal = document.getElementById('updateModal');
+        const updateMessage = updateModal.querySelector('.update-message');
+        updateMessage.innerHTML = `最新版本：${latestVersion}<br>发布时间：${new Date(data.published_at).toLocaleDateString()}<br><br>更新内容：<br>${data.body.replace(/\n/g, '<br>')}`;
+        updateModal.style.display = 'block';
+        
+        // 如果版本差距过大，隐藏"稍后提醒"按钮
+        const updateLater = document.getElementById('updateLater');
+        const versionGap = parseFloat(latestVersion) - parseFloat(CURRENT_VERSION);
+        if (versionGap >= 1.0) {
+          updateLater.style.display = 'none';
+        }
+      }
     }
   } catch (error) {
     console.error('检查更新失败:', error);
