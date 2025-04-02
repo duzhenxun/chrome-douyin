@@ -6,6 +6,26 @@ const CURRENT_VERSION = chrome.runtime.getManifest().version;
 console.log(CURRENT_VERSION);
 const UPDATE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
+// 版本号比较函数
+function compareVersions(v1, v2) {
+  if (!v1 || !v2) return 0;
+  
+  const v1Parts = v1.split('.').map(Number);
+  const v2Parts = v2.split('.').map(Number);
+  
+  const maxLength = Math.max(v1Parts.length, v2Parts.length);
+  
+  for (let i = 0; i < maxLength; i++) {
+    const v1Part = v1Parts[i] || 0;
+    const v2Part = v2Parts[i] || 0;
+    
+    if (v1Part > v2Part) return 1;
+    if (v1Part < v2Part) return -1;
+  }
+  
+  return 0;
+}
+
 // 下载队列管理器
 class DownloadManager {
   constructor() {
@@ -134,19 +154,17 @@ async function checkUpdate() {
 
     if (data.tag_name) {
       const latestVersion = data.tag_name.replace('v', '');
-      if (latestVersion !== CURRENT_VERSION) {
+      if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
         // 显示更新提示
         const updateModal = document.getElementById('updateModal');
         const updateMessage = updateModal.querySelector('.update-message');
-        updateMessage.innerHTML = `最新版本：${latestVersion}<br>发布时间：${new Date(data.published_at).toLocaleDateString()}<br><br>更新内容：<br>${data.body.replace(/\n/g, '<br>')}`;
+        updateMessage.innerHTML = `当前版本：${CURRENT_VERSION}<br>最新版本：${latestVersion}<br>发布时间：${new Date(data.published_at).toLocaleDateString()}<br><br>更新内容：<br>${data.body ? data.body.replace(/\n/g, '<br>') : '暂无更新内容'}`;
         updateModal.style.display = 'block';
         
-        // 如果版本差距过大，隐藏"稍后提醒"按钮
-        const updateLater = document.getElementById('updateLater');
-        const versionGap = parseFloat(latestVersion) - parseFloat(CURRENT_VERSION);
-        // if (versionGap >= 1.0) {
-        //   updateLater.style.display = 'none';
-        // }
+        // 更新扩展图标
+        chrome.action.setBadgeText({ text: '↑'});
+        chrome.action.setBadgeTextColor({ color: '#000000' });
+        chrome.action.setBadgeBackgroundColor({ color: '#FFCC00' });
       }
     }
   } catch (error) {
@@ -596,21 +614,21 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHistory();
 });
 
-// 打赏功能
-const donateBtn = document.getElementById('donateBtn');
-const donateModal = document.getElementById('donateModal');
-const closeDonate = document.getElementById('closeDonate');
+// 打赏功能已禁用
+// const donateBtn = document.getElementById('donateBtn');
+// const donateModal = document.getElementById('donateModal');
+// const closeDonate = document.getElementById('closeDonate');
 
-donateBtn.addEventListener('click', () => {
-  donateModal.style.display = 'block';
-});
+// donateBtn.addEventListener('click', () => {
+//   donateModal.style.display = 'block';
+// });
 
-closeDonate.addEventListener('click', () => {
-  donateModal.style.display = 'none';
-});
+// closeDonate.addEventListener('click', () => {
+//   donateModal.style.display = 'none';
+// });
 
-donateModal.addEventListener('click', (e) => {
-  if (e.target === donateModal) {
-    donateModal.style.display = 'none';
-  }
-});
+// donateModal.addEventListener('click', (e) => {
+//   if (e.target === donateModal) {
+//     donateModal.style.display = 'none';
+//   }
+// });
