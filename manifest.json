@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "抖音视频下载助手",
   "author": "duzhenxun",
-  "version": "2025.4.2",
+  "version": "2025.4.7",
   "description": "抖音视频去水印下载，支持在线预览和视频信息展示，支持历史记录, 支持复制视频信息,方便快捷，完全免费",
   "permissions": [
     "storage",

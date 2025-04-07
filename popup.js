@@ -173,6 +173,9 @@ async function checkUpdate() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 显示当前版本号
+  document.getElementById('currentVersion').textContent = CURRENT_VERSION;
+
   // 初始化更新按钮事件
   const updateNow = document.getElementById('updateNow');
   const updateLater = document.getElementById('updateLater');
