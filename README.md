@@ -11,7 +11,8 @@
 
 ## 安装说明
 ### 在线安装
-1. https://chromewebstore.google.com/detail/kjekjdmhcoddchkbdgkmmpfnholfpojf?utm_source=item-share-cb
+https://chromewebstore.google.com/detail/kjekjdmhcoddchkbdgkmmpfnholfpojf?utm_source=item-share-cb
+
 ### 本地安装
 1. 打开Chrome浏览器，进入扩展管理页面（chrome://extensions/）
 2. 开启右上角的「开发者模式」
@@ -38,3 +39,4 @@
 如果您觉得这个工具对您有帮助，欢迎打赏支持作者继续开发和维护。
 
 ![微信收款码](images/wpay.JPG)
+
