@@ -10,11 +10,14 @@
 - 一键下载视频到本地
 
 ## 安装说明
-
+### 在线安装
+1. https://chromewebstore.google.com/detail/kjekjdmhcoddchkbdgkmmpfnholfpojf?utm_source=item-share-cb
+### 本地安装
 1. 打开Chrome浏览器，进入扩展管理页面（chrome://extensions/）
 2. 开启右上角的「开发者模式」
 3. 点击「加载已解压的扩展程序」
 4. 选择本扩展所在的文件夹
+   
 
 ## 使用方法
 
